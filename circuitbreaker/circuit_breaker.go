@@ -8,7 +8,7 @@ import (
 const OPEN_STATE = "OPEN"
 const CLOSED_STATE = "CLOSED"
 const HALF_OPEN_STATE = "HALF_OPEN"
-const DEFAULT_FAILURE_THRESHOLD = 5
+const DEFAULT_THRESHOLD = 5
 const DEFAULT_TIMEOUT = 5 * time.Second
 
 type CircuitBreaker struct {
@@ -17,16 +17,23 @@ type CircuitBreaker struct {
 	FailureThreshold int
 	OpenedAt         time.Time
 	State            string
+	Successes        int
+	SuccessThreshold int
 	Timeout          time.Duration
 }
 
 func NewCircuitBreaker() *CircuitBreaker {
 	return &CircuitBreaker{
-		FailureThreshold: DEFAULT_FAILURE_THRESHOLD,
+		FailureThreshold: DEFAULT_THRESHOLD,
 		FailureFunc:      defaultFailureFunc,
 		State:            CLOSED_STATE,
+		SuccessThreshold: DEFAULT_THRESHOLD,
 		Timeout:          DEFAULT_TIMEOUT,
 	}
+}
+
+func (cb *CircuitBreaker) Close() {
+	cb.State = CLOSED_STATE
 }
 
 func (cb *CircuitBreaker) HalfOpen() {
@@ -51,8 +58,10 @@ func (cb *CircuitBreaker) Run(r *http.Request) {
 	resp, err := http.DefaultClient.Do(r)
 	if err != nil || cb.FailureFunc(resp) {
 		cb.markFailure()
+		return
 	}
 
+	cb.markSuccess()
 	return
 }
 
@@ -70,6 +79,12 @@ func (cb *CircuitBreaker) WithFailureThreshold(t int) *CircuitBreaker {
 
 func (cb *CircuitBreaker) WithTimeout(t time.Duration) *CircuitBreaker {
 	cb.Timeout = t
+
+	return cb
+}
+
+func (cb *CircuitBreaker) WithSuccessThreshold(t int) *CircuitBreaker {
+	cb.SuccessThreshold = t
 
 	return cb
 }
@@ -92,4 +107,13 @@ func (cb *CircuitBreaker) markFailure() {
 	}
 
 	cb.Open()
+}
+
+func (cb *CircuitBreaker) markSuccess() {
+	cb.Successes += 1
+	if cb.State == CLOSED_STATE || cb.Successes < cb.SuccessThreshold {
+		return
+	}
+
+	cb.Close()
 }
