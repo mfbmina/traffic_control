@@ -1,11 +1,10 @@
 package circuitbreaker_test
 
 import (
-	"net/http"
+	"errors"
 	"testing"
 	"time"
 
-	"github.com/h2non/gock"
 	"github.com/mfbmina/traffic_control/circuitbreaker"
 	"github.com/stretchr/testify/assert"
 )
@@ -49,20 +48,14 @@ func Test_NewCircuitBreaker(t *testing.T) {
 }
 
 func Test_Run(t *testing.T) {
-	t.Run("Circuit breaker should be in CLOSED state if the request is succesful", func(t *testing.T) {
-		defer gock.Off()
+	errorFunc := func() (interface{}, error) { return nil, errors.New("error") }
+	successFunc := func() (interface{}, error) { return true, nil }
 
+	t.Run("Circuit breaker should be in CLOSED state if the request is succesful", func(t *testing.T) {
 		cb := circuitbreaker.NewCircuitBreaker()
 
-		req, err := http.NewRequest("GET", "http://example.com/ok", nil)
-		assert.NoError(t, err)
-
 		for range 5 {
-			gock.New("http://example.com").
-				Get("/ok").
-				Reply(http.StatusOK)
-
-			cb.Run(req)
+			cb.Run(successFunc)
 		}
 
 		assert.Equal(t, circuitbreaker.CLOSED_STATE, cb.State)
@@ -70,29 +63,18 @@ func Test_Run(t *testing.T) {
 	})
 
 	t.Run("Circuit breaker should be in CLOSED state if the threshold is not reached", func(t *testing.T) {
-		defer gock.Off()
-		gock.New("http://example.com").Get("/nok").Reply(http.StatusBadRequest)
-
 		cb := circuitbreaker.NewCircuitBreaker()
 
-		req, err := http.NewRequest("GET", "http://example.com/nok", nil)
-		assert.NoError(t, err)
-
-		cb.Run(req)
+		cb.Run(errorFunc)
 		assert.Equal(t, circuitbreaker.CLOSED_STATE, cb.State)
 		assert.Equal(t, 1, cb.Failures)
 	})
 
 	t.Run("Circuit breaker should be in OPEN state if the threshold is reached", func(t *testing.T) {
-		defer gock.Off()
-
 		cb := circuitbreaker.NewCircuitBreaker()
-		req, err := http.NewRequest("GET", "http://example.com/nok", nil)
-		assert.NoError(t, err)
 
 		for range 5 {
-			gock.New("http://example.com").Get("/nok").Reply(http.StatusBadRequest)
-			cb.Run(req)
+			cb.Run(errorFunc)
 		}
 
 		assert.Equal(t, circuitbreaker.OPEN_STATE, cb.State)
@@ -100,54 +82,34 @@ func Test_Run(t *testing.T) {
 	})
 
 	t.Run("Circuit breaker should be in OPEN state while in timeout", func(t *testing.T) {
-		defer gock.Off()
 		cb := circuitbreaker.NewCircuitBreaker().WithFailureThreshold(1)
-
-		req, err := http.NewRequest("GET", "http://example.com/nok", nil)
-		assert.NoError(t, err)
+		cb.Open()
+		assert.Equal(t, circuitbreaker.OPEN_STATE, cb.State)
 
 		for range 5 {
-			gock.New("http://example.com").Get("/nok").Reply(http.StatusBadRequest)
-			cb.Run(req)
+			cb.Run(successFunc)
 		}
 
 		assert.Equal(t, circuitbreaker.OPEN_STATE, cb.State)
-		assert.Equal(t, 1, cb.Failures)
 	})
 
 	t.Run("Circuit breaker should be in HALF_OPEN state after its timeout", func(t *testing.T) {
-		defer gock.Off()
-		gock.New("http://example.com").Get("/ok").Reply(http.StatusOK)
-		gock.New("http://example.com").Get("/nok").Reply(http.StatusBadRequest)
-
 		cb := circuitbreaker.NewCircuitBreaker().WithFailureThreshold(1).WithTimeout(1 * time.Second)
-
-		req, err := http.NewRequest("GET", "http://example.com/nok", nil)
-		assert.NoError(t, err)
-		cb.Run(req)
+		cb.Open()
 		assert.Equal(t, circuitbreaker.OPEN_STATE, cb.State)
-		assert.Equal(t, 1, cb.Failures)
 
 		time.Sleep(2 * time.Second)
-		req, err = http.NewRequest("GET", "http://example.com/ok", nil)
-		assert.NoError(t, err)
-		cb.Run(req)
+		cb.Run(successFunc)
+
 		assert.Equal(t, circuitbreaker.HALF_OPEN_STATE, cb.State)
-		assert.Equal(t, 0, cb.Failures)
 	})
 
 	t.Run("Circuit breaker should be in CLOSED state after succesful requests", func(t *testing.T) {
-		defer gock.Off()
-		gock.New("http://example.com").Get("/ok").Reply(http.StatusOK)
-
 		cb := circuitbreaker.NewCircuitBreaker().WithSuccessThreshold(1)
 		cb.HalfOpen()
 		assert.Equal(t, circuitbreaker.HALF_OPEN_STATE, cb.State)
 
-		req, err := http.NewRequest("GET", "http://example.com/ok", nil)
-		assert.NoError(t, err)
-		cb.Run(req)
+		cb.Run(successFunc)
 		assert.Equal(t, circuitbreaker.CLOSED_STATE, cb.State)
-		assert.Equal(t, 0, cb.Failures)
 	})
 }
