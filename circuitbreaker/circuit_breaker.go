@@ -1,6 +1,8 @@
 package circuitbreaker
 
-import "net/http"
+import (
+	"net/http"
+)
 
 const OPEN_STATE = "OPEN"
 const CLOSED_STATE = "CLOSED"
@@ -14,14 +16,10 @@ type CircuitBreaker struct {
 	FailureFunc  func(r *http.Response) bool
 }
 
-func NewCircuitBreaker(threshold int, failure func(*http.Response) bool) *CircuitBreaker {
-	if failure == nil {
-		failure = defaultFailureFunc
-	}
-
+func NewCircuitBreaker(threshold int) *CircuitBreaker {
 	return &CircuitBreaker{
 		Threshold:    threshold,
-		FailureFunc:  failure,
+		FailureFunc:  defaultFailureFunc,
 		FailureCount: 0,
 		State:        CLOSED_STATE,
 	}
@@ -29,6 +27,7 @@ func NewCircuitBreaker(threshold int, failure func(*http.Response) bool) *Circui
 
 func (cb *CircuitBreaker) Run(r *http.Request) {
 	resp, err := http.DefaultClient.Do(r)
+
 	if err != nil || cb.FailureFunc(resp) {
 		cb.markFailure()
 	}
@@ -42,6 +41,11 @@ func (cb *CircuitBreaker) markFailure() {
 	if cb.FailureCount >= cb.Threshold {
 		cb.State = OPEN_STATE
 	}
+}
+
+func (cb *CircuitBreaker) Reset() {
+	cb.FailureCount = 0
+	cb.State = CLOSED_STATE
 }
 
 func defaultFailureFunc(r *http.Response) bool {
