@@ -16,9 +16,9 @@ type CircuitBreaker struct {
 	FailureFunc  func(r *http.Response) bool
 }
 
-func NewCircuitBreaker(threshold int) *CircuitBreaker {
+func NewCircuitBreaker() *CircuitBreaker {
 	return &CircuitBreaker{
-		Threshold:    threshold,
+		Threshold:    DEFAULT_THRESHOLD,
 		FailureFunc:  defaultFailureFunc,
 		FailureCount: 0,
 		State:        CLOSED_STATE,
@@ -35,17 +35,17 @@ func (cb *CircuitBreaker) Run(r *http.Request) {
 	return
 }
 
+func (cb *CircuitBreaker) Reset() {
+	cb.FailureCount = 0
+	cb.State = CLOSED_STATE
+}
+
 func (cb *CircuitBreaker) markFailure() {
 	cb.FailureCount += 1
 
 	if cb.FailureCount >= cb.Threshold {
 		cb.State = OPEN_STATE
 	}
-}
-
-func (cb *CircuitBreaker) Reset() {
-	cb.FailureCount = 0
-	cb.State = CLOSED_STATE
 }
 
 func defaultFailureFunc(r *http.Response) bool {
