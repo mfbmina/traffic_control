@@ -9,6 +9,35 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func Test_NewCircuitBreaker(t *testing.T) {
+	t.Run("Default config should be used if no option is provided", func(t *testing.T) {
+		cb := circuitbreaker.NewCircuitBreaker()
+
+		assert.Equal(t, circuitbreaker.CLOSED_STATE, cb.State)
+		assert.Equal(t, 0, cb.Failures)
+		assert.Equal(t, circuitbreaker.DEFAULT_FAILURE_THRESHOLD, cb.FailureThreshold)
+		assert.Equal(t, circuitbreaker.DEFAULT_TIMEOUT, cb.Timeout)
+	})
+
+	t.Run("Should set failure threshold if provided", func(t *testing.T) {
+		cb := circuitbreaker.NewCircuitBreaker().WithFailureThreshold(10)
+
+		assert.Equal(t, circuitbreaker.CLOSED_STATE, cb.State)
+		assert.Equal(t, 0, cb.Failures)
+		assert.Equal(t, 10, cb.FailureThreshold)
+		assert.Equal(t, circuitbreaker.DEFAULT_TIMEOUT, cb.Timeout)
+	})
+
+	t.Run("Should set timeout if provided", func(t *testing.T) {
+		cb := circuitbreaker.NewCircuitBreaker().WithTimeout(10)
+
+		assert.Equal(t, circuitbreaker.CLOSED_STATE, cb.State)
+		assert.Equal(t, 0, cb.Failures)
+		assert.Equal(t, circuitbreaker.DEFAULT_FAILURE_THRESHOLD, cb.FailureThreshold)
+		assert.Equal(t, 10, cb.Timeout)
+	})
+}
+
 func Test_Run(t *testing.T) {
 	t.Run("Circuit breaker should be in CLOSED state if the request is succesful", func(t *testing.T) {
 		defer gock.Off()
@@ -27,7 +56,7 @@ func Test_Run(t *testing.T) {
 		}
 
 		assert.Equal(t, circuitbreaker.CLOSED_STATE, cb.State)
-		assert.Equal(t, 0, cb.FailureCount)
+		assert.Equal(t, 0, cb.Failures)
 	})
 
 	t.Run("Circuit breaker should be in CLOSED state if the threshold is not reached", func(t *testing.T) {
@@ -38,7 +67,7 @@ func Test_Run(t *testing.T) {
 
 		cb.Run(req)
 		assert.Equal(t, circuitbreaker.CLOSED_STATE, cb.State)
-		assert.Equal(t, 1, cb.FailureCount)
+		assert.Equal(t, 1, cb.Failures)
 	})
 
 	t.Run("Circuit breaker should be in OPEN state if the threshold is reached", func(t *testing.T) {
@@ -52,16 +81,16 @@ func Test_Run(t *testing.T) {
 		}
 
 		assert.Equal(t, circuitbreaker.OPEN_STATE, cb.State)
-		assert.Equal(t, 5, cb.FailureCount)
+		assert.Equal(t, 5, cb.Failures)
 	})
 }
 
 func Test_Reset(t *testing.T) {
 	cb := circuitbreaker.NewCircuitBreaker()
 	cb.State = circuitbreaker.OPEN_STATE
-	cb.FailureCount = 3
+	cb.Failures = 3
 
 	cb.Reset()
 	assert.Equal(t, circuitbreaker.CLOSED_STATE, cb.State)
-	assert.Equal(t, 0, cb.FailureCount)
+	assert.Equal(t, 0, cb.Failures)
 }

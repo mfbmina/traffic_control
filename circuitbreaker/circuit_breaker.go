@@ -7,22 +7,29 @@ import (
 const OPEN_STATE = "OPEN"
 const CLOSED_STATE = "CLOSED"
 const HALF_OPEN_STATE = "HALF_OPEN"
-const DEFAULT_THRESHOLD = 5
+const DEFAULT_FAILURE_THRESHOLD = 5
+const DEFAULT_TIMEOUT = 5
 
 type CircuitBreaker struct {
-	Threshold    int
-	FailureCount int
-	State        string
-	FailureFunc  func(r *http.Response) bool
+	Failures         int
+	FailureFunc      func(r *http.Response) bool
+	FailureThreshold int
+	State            string
+	Timeout          int
 }
 
 func NewCircuitBreaker() *CircuitBreaker {
 	return &CircuitBreaker{
-		Threshold:    DEFAULT_THRESHOLD,
-		FailureFunc:  defaultFailureFunc,
-		FailureCount: 0,
-		State:        CLOSED_STATE,
+		FailureThreshold: DEFAULT_FAILURE_THRESHOLD,
+		FailureFunc:      defaultFailureFunc,
+		State:            CLOSED_STATE,
+		Timeout:          DEFAULT_TIMEOUT,
 	}
+}
+
+func (cb *CircuitBreaker) Reset() {
+	cb.Failures = 0
+	cb.State = CLOSED_STATE
 }
 
 func (cb *CircuitBreaker) Run(r *http.Request) {
@@ -35,17 +42,22 @@ func (cb *CircuitBreaker) Run(r *http.Request) {
 	return
 }
 
-func (cb *CircuitBreaker) Reset() {
-	cb.FailureCount = 0
-	cb.State = CLOSED_STATE
+func (cb *CircuitBreaker) WithFailureFunc(f func(r *http.Response) bool) *CircuitBreaker {
+	cb.FailureFunc = f
+
+	return cb
 }
 
-func (cb *CircuitBreaker) markFailure() {
-	cb.FailureCount += 1
+func (cb *CircuitBreaker) WithFailureThreshold(t int) *CircuitBreaker {
+	cb.FailureThreshold = t
 
-	if cb.FailureCount >= cb.Threshold {
-		cb.State = OPEN_STATE
-	}
+	return cb
+}
+
+func (cb *CircuitBreaker) WithTimeout(t int) *CircuitBreaker {
+	cb.Timeout = t
+
+	return cb
 }
 
 func defaultFailureFunc(r *http.Response) bool {
@@ -57,4 +69,12 @@ func defaultFailureFunc(r *http.Response) bool {
 	}
 
 	return false
+}
+
+func (cb *CircuitBreaker) markFailure() {
+	cb.Failures += 1
+
+	if cb.Failures >= cb.FailureThreshold {
+		cb.State = OPEN_STATE
+	}
 }
