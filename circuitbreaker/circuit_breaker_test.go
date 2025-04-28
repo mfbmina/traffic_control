@@ -3,6 +3,7 @@ package circuitbreaker_test
 import (
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/h2non/gock"
 	"github.com/mfbmina/traffic_control/circuitbreaker"
@@ -29,12 +30,12 @@ func Test_NewCircuitBreaker(t *testing.T) {
 	})
 
 	t.Run("Should set timeout if provided", func(t *testing.T) {
-		cb := circuitbreaker.NewCircuitBreaker().WithTimeout(10)
+		cb := circuitbreaker.NewCircuitBreaker().WithTimeout(10 * time.Second)
 
 		assert.Equal(t, circuitbreaker.CLOSED_STATE, cb.State)
 		assert.Equal(t, 0, cb.Failures)
 		assert.Equal(t, circuitbreaker.DEFAULT_FAILURE_THRESHOLD, cb.FailureThreshold)
-		assert.Equal(t, 10, cb.Timeout)
+		assert.Equal(t, 10*time.Second, cb.Timeout)
 	})
 }
 
@@ -83,14 +84,36 @@ func Test_Run(t *testing.T) {
 		assert.Equal(t, circuitbreaker.OPEN_STATE, cb.State)
 		assert.Equal(t, 5, cb.Failures)
 	})
-}
 
-func Test_Reset(t *testing.T) {
-	cb := circuitbreaker.NewCircuitBreaker()
-	cb.State = circuitbreaker.OPEN_STATE
-	cb.Failures = 3
+	t.Run("Circuit breaker should be in OPEN state while in timeout", func(t *testing.T) {
+		cb := circuitbreaker.NewCircuitBreaker().WithFailureThreshold(1)
 
-	cb.Reset()
-	assert.Equal(t, circuitbreaker.CLOSED_STATE, cb.State)
-	assert.Equal(t, 0, cb.Failures)
+		req, err := http.NewRequest("GET", "http://example.com/nok", nil)
+		assert.NoError(t, err)
+
+		for range 5 {
+			cb.Run(req)
+		}
+
+		assert.Equal(t, circuitbreaker.OPEN_STATE, cb.State)
+		assert.Equal(t, 1, cb.Failures)
+	})
+
+	t.Run("Circuit breaker should be in HALF_OPEN state after its timeout", func(t *testing.T) {
+		cb := circuitbreaker.NewCircuitBreaker().WithFailureThreshold(1).WithTimeout(1 * time.Second)
+
+		req, err := http.NewRequest("GET", "http://example.com/nok", nil)
+		assert.NoError(t, err)
+		cb.Run(req)
+		assert.Equal(t, circuitbreaker.OPEN_STATE, cb.State)
+		assert.Equal(t, 1, cb.Failures)
+
+		time.Sleep(2 * time.Second)
+		gock.New("http://example.com").Get("/ok").Reply(http.StatusOK)
+		req, err = http.NewRequest("GET", "http://example.com/ok", nil)
+		assert.NoError(t, err)
+		cb.Run(req)
+		assert.Equal(t, circuitbreaker.HALF_OPEN_STATE, cb.State)
+		assert.Equal(t, 0, cb.Failures)
+	})
 }

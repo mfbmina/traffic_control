@@ -2,20 +2,22 @@ package circuitbreaker
 
 import (
 	"net/http"
+	"time"
 )
 
 const OPEN_STATE = "OPEN"
 const CLOSED_STATE = "CLOSED"
 const HALF_OPEN_STATE = "HALF_OPEN"
 const DEFAULT_FAILURE_THRESHOLD = 5
-const DEFAULT_TIMEOUT = 5
+const DEFAULT_TIMEOUT = 5 * time.Second
 
 type CircuitBreaker struct {
 	Failures         int
 	FailureFunc      func(r *http.Response) bool
 	FailureThreshold int
+	OpenedAt         time.Time
 	State            string
-	Timeout          int
+	Timeout          time.Duration
 }
 
 func NewCircuitBreaker() *CircuitBreaker {
@@ -27,14 +29,26 @@ func NewCircuitBreaker() *CircuitBreaker {
 	}
 }
 
-func (cb *CircuitBreaker) Reset() {
+func (cb *CircuitBreaker) HalfOpen() {
+	cb.State = HALF_OPEN_STATE
 	cb.Failures = 0
-	cb.State = CLOSED_STATE
+}
+
+func (cb *CircuitBreaker) Open() {
+	cb.State = OPEN_STATE
+	cb.OpenedAt = time.Now()
 }
 
 func (cb *CircuitBreaker) Run(r *http.Request) {
-	resp, err := http.DefaultClient.Do(r)
+	if cb.State == OPEN_STATE && time.Since(cb.OpenedAt) < cb.Timeout {
+		return
+	}
 
+	if cb.State == OPEN_STATE {
+		cb.HalfOpen()
+	}
+
+	resp, err := http.DefaultClient.Do(r)
 	if err != nil || cb.FailureFunc(resp) {
 		cb.markFailure()
 	}
@@ -54,7 +68,7 @@ func (cb *CircuitBreaker) WithFailureThreshold(t int) *CircuitBreaker {
 	return cb
 }
 
-func (cb *CircuitBreaker) WithTimeout(t int) *CircuitBreaker {
+func (cb *CircuitBreaker) WithTimeout(t time.Duration) *CircuitBreaker {
 	cb.Timeout = t
 
 	return cb
@@ -73,8 +87,9 @@ func defaultFailureFunc(r *http.Response) bool {
 
 func (cb *CircuitBreaker) markFailure() {
 	cb.Failures += 1
-
-	if cb.Failures >= cb.FailureThreshold {
-		cb.State = OPEN_STATE
+	if cb.Failures < cb.FailureThreshold {
+		return
 	}
+
+	cb.Open()
 }
