@@ -39,15 +39,14 @@ func myFunc() (interface{}, error) {
 } 
 ```
 
-## Transititioning
-
+## Transitioning
 If you wish, you can change the state by yourself.
 
 ```go
 cb := circuitbreaker.New()
 cb.Open()
 cb.HalfOpen()
-cb.Closed()
+cb.Close()
 ```
 
 ## 

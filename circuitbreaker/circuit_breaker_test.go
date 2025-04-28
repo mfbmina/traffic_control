@@ -51,7 +51,7 @@ func Test_Run(t *testing.T) {
 	errorFunc := func() (interface{}, error) { return nil, errors.New("error") }
 	successFunc := func() (interface{}, error) { return true, nil }
 
-	t.Run("Circuit breaker should be in CLOSED state if the request is succesful", func(t *testing.T) {
+	t.Run("Circuit breaker should be in CLOSED state if the request is successful", func(t *testing.T) {
 		cb := circuitbreaker.New()
 
 		for range 5 {
@@ -113,7 +113,7 @@ func Test_Run(t *testing.T) {
 		assert.Equal(t, circuitbreaker.HALF_OPEN_STATE, cb.State)
 	})
 
-	t.Run("Circuit breaker should be in CLOSED state after succesful requests", func(t *testing.T) {
+	t.Run("Circuit breaker should be in CLOSED state after successful requests", func(t *testing.T) {
 		cb := circuitbreaker.New().WithSuccessThreshold(1)
 		cb.HalfOpen()
 		assert.Equal(t, circuitbreaker.HALF_OPEN_STATE, cb.State)
