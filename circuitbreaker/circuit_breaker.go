@@ -23,7 +23,7 @@ type CircuitBreaker struct {
 	Timeout          time.Duration
 }
 
-func NewCircuitBreaker() *CircuitBreaker {
+func New() *CircuitBreaker {
 	return &CircuitBreaker{
 		FailureThreshold: DEFAULT_THRESHOLD,
 		State:            CLOSED_STATE,

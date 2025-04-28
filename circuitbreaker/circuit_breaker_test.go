@@ -9,9 +9,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_NewCircuitBreaker(t *testing.T) {
+func Test_New(t *testing.T) {
 	t.Run("Default config should be used if no option is provided", func(t *testing.T) {
-		cb := circuitbreaker.NewCircuitBreaker()
+		cb := circuitbreaker.New()
 
 		assert.Equal(t, circuitbreaker.CLOSED_STATE, cb.State)
 		assert.Equal(t, circuitbreaker.DEFAULT_THRESHOLD, cb.FailureThreshold)
@@ -20,7 +20,7 @@ func Test_NewCircuitBreaker(t *testing.T) {
 	})
 
 	t.Run("Should set failure threshold if provided", func(t *testing.T) {
-		cb := circuitbreaker.NewCircuitBreaker().WithFailureThreshold(10)
+		cb := circuitbreaker.New().WithFailureThreshold(10)
 
 		assert.Equal(t, circuitbreaker.CLOSED_STATE, cb.State)
 		assert.Equal(t, 10, cb.FailureThreshold)
@@ -29,7 +29,7 @@ func Test_NewCircuitBreaker(t *testing.T) {
 	})
 
 	t.Run("Should set timeout if provided", func(t *testing.T) {
-		cb := circuitbreaker.NewCircuitBreaker().WithTimeout(10 * time.Second)
+		cb := circuitbreaker.New().WithTimeout(10 * time.Second)
 
 		assert.Equal(t, circuitbreaker.CLOSED_STATE, cb.State)
 		assert.Equal(t, circuitbreaker.DEFAULT_THRESHOLD, cb.FailureThreshold)
@@ -38,7 +38,7 @@ func Test_NewCircuitBreaker(t *testing.T) {
 	})
 
 	t.Run("Should set success threshold if provided", func(t *testing.T) {
-		cb := circuitbreaker.NewCircuitBreaker().WithSuccessThreshold(10)
+		cb := circuitbreaker.New().WithSuccessThreshold(10)
 
 		assert.Equal(t, circuitbreaker.CLOSED_STATE, cb.State)
 		assert.Equal(t, circuitbreaker.DEFAULT_THRESHOLD, cb.FailureThreshold)
@@ -52,7 +52,7 @@ func Test_Run(t *testing.T) {
 	successFunc := func() (interface{}, error) { return true, nil }
 
 	t.Run("Circuit breaker should be in CLOSED state if the request is succesful", func(t *testing.T) {
-		cb := circuitbreaker.NewCircuitBreaker()
+		cb := circuitbreaker.New()
 
 		for range 5 {
 			cb.Run(successFunc)
@@ -63,7 +63,7 @@ func Test_Run(t *testing.T) {
 	})
 
 	t.Run("Circuit breaker should be in CLOSED state if the threshold is not reached", func(t *testing.T) {
-		cb := circuitbreaker.NewCircuitBreaker()
+		cb := circuitbreaker.New()
 
 		cb.Run(errorFunc)
 		assert.Equal(t, circuitbreaker.CLOSED_STATE, cb.State)
@@ -71,7 +71,7 @@ func Test_Run(t *testing.T) {
 	})
 
 	t.Run("Circuit breaker should be in OPEN state if the threshold is reached", func(t *testing.T) {
-		cb := circuitbreaker.NewCircuitBreaker()
+		cb := circuitbreaker.New()
 
 		for range 5 {
 			cb.Run(errorFunc)
@@ -82,7 +82,7 @@ func Test_Run(t *testing.T) {
 	})
 
 	t.Run("Circuit breaker should be in OPEN state while in timeout", func(t *testing.T) {
-		cb := circuitbreaker.NewCircuitBreaker().WithFailureThreshold(1)
+		cb := circuitbreaker.New().WithFailureThreshold(1)
 		cb.Open()
 		assert.Equal(t, circuitbreaker.OPEN_STATE, cb.State)
 
@@ -94,7 +94,7 @@ func Test_Run(t *testing.T) {
 	})
 
 	t.Run("Circuit breaker should be in HALF_OPEN state after its timeout", func(t *testing.T) {
-		cb := circuitbreaker.NewCircuitBreaker().WithFailureThreshold(1).WithTimeout(1 * time.Second)
+		cb := circuitbreaker.New().WithFailureThreshold(1).WithTimeout(1 * time.Second)
 		cb.Open()
 		assert.Equal(t, circuitbreaker.OPEN_STATE, cb.State)
 
@@ -105,7 +105,7 @@ func Test_Run(t *testing.T) {
 	})
 
 	t.Run("Circuit breaker should be in CLOSED state after succesful requests", func(t *testing.T) {
-		cb := circuitbreaker.NewCircuitBreaker().WithSuccessThreshold(1)
+		cb := circuitbreaker.New().WithSuccessThreshold(1)
 		cb.HalfOpen()
 		assert.Equal(t, circuitbreaker.HALF_OPEN_STATE, cb.State)
 
