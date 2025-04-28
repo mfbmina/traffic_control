@@ -55,7 +55,9 @@ func Test_Run(t *testing.T) {
 		cb := circuitbreaker.New()
 
 		for range 5 {
-			cb.Run(successFunc)
+			r, err := cb.Run(successFunc)
+			assert.True(t, r.(bool))
+			assert.NoError(t, err)
 		}
 
 		assert.Equal(t, circuitbreaker.CLOSED_STATE, cb.State)
@@ -65,7 +67,9 @@ func Test_Run(t *testing.T) {
 	t.Run("Circuit breaker should be in CLOSED state if the threshold is not reached", func(t *testing.T) {
 		cb := circuitbreaker.New()
 
-		cb.Run(errorFunc)
+		r, err := cb.Run(errorFunc)
+		assert.Nil(t, r)
+		assert.NotNil(t, err)
 		assert.Equal(t, circuitbreaker.CLOSED_STATE, cb.State)
 		assert.Equal(t, 1, cb.Failures)
 	})
@@ -74,7 +78,9 @@ func Test_Run(t *testing.T) {
 		cb := circuitbreaker.New()
 
 		for range 5 {
-			cb.Run(errorFunc)
+			r, err := cb.Run(errorFunc)
+			assert.Nil(t, r)
+			assert.NotNil(t, err)
 		}
 
 		assert.Equal(t, circuitbreaker.OPEN_STATE, cb.State)
@@ -87,7 +93,9 @@ func Test_Run(t *testing.T) {
 		assert.Equal(t, circuitbreaker.OPEN_STATE, cb.State)
 
 		for range 5 {
-			cb.Run(successFunc)
+			r, err := cb.Run(successFunc)
+			assert.Nil(t, r)
+			assert.ErrorIs(t, err, circuitbreaker.ErrOpenCircuit)
 		}
 
 		assert.Equal(t, circuitbreaker.OPEN_STATE, cb.State)
@@ -99,8 +107,9 @@ func Test_Run(t *testing.T) {
 		assert.Equal(t, circuitbreaker.OPEN_STATE, cb.State)
 
 		time.Sleep(2 * time.Second)
-		cb.Run(successFunc)
-
+		r, err := cb.Run(successFunc)
+		assert.NotNil(t, r)
+		assert.NoError(t, err)
 		assert.Equal(t, circuitbreaker.HALF_OPEN_STATE, cb.State)
 	})
 
@@ -109,7 +118,9 @@ func Test_Run(t *testing.T) {
 		cb.HalfOpen()
 		assert.Equal(t, circuitbreaker.HALF_OPEN_STATE, cb.State)
 
-		cb.Run(successFunc)
+		r, err := cb.Run(successFunc)
+		assert.NotNil(t, r)
+		assert.NoError(t, err)
 		assert.Equal(t, circuitbreaker.CLOSED_STATE, cb.State)
 	})
 }

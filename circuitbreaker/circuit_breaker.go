@@ -11,7 +11,7 @@ const HALF_OPEN_STATE = "HALF_OPEN"
 const DEFAULT_THRESHOLD = 5
 const DEFAULT_TIMEOUT = 5 * time.Second
 
-var OpenErr = errors.New("circuit breaker is open")
+var ErrOpenCircuit = errors.New("circuit breaker is open")
 
 type CircuitBreaker struct {
 	Failures         int
@@ -48,7 +48,7 @@ func (cb *CircuitBreaker) Open() {
 
 func (cb *CircuitBreaker) Run(f func() (interface{}, error)) (interface{}, error) {
 	if cb.State == OPEN_STATE && time.Since(cb.OpenedAt) < cb.Timeout {
-		return nil, OpenErr
+		return nil, ErrOpenCircuit
 	}
 
 	if cb.State == OPEN_STATE {
