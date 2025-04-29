@@ -18,18 +18,23 @@ type CircuitBreaker struct {
 	FailureThreshold int
 	OpenedAt         time.Time
 	State            string
+	CloseCheck       func() bool
+	HalfOpenCheck    func() bool
+	OpenCheck        func() bool
 	Successes        int
 	SuccessThreshold int
 	Timeout          time.Duration
 }
 
 func New() *CircuitBreaker {
-	return &CircuitBreaker{
-		FailureThreshold: DEFAULT_THRESHOLD,
-		State:            CLOSED_STATE,
-		SuccessThreshold: DEFAULT_THRESHOLD,
-		Timeout:          DEFAULT_TIMEOUT,
-	}
+	cb := &CircuitBreaker{State: CLOSED_STATE}
+
+	return cb.WithFailureThreshold(DEFAULT_THRESHOLD).
+		WithSuccessThreshold(DEFAULT_THRESHOLD).
+		WithTimeout(DEFAULT_TIMEOUT).
+		WithCloseCheck(cb.defaultCloseCheck).
+		WithHalfOpenCheck(cb.defaultHalfOpen).
+		WithOpenCheck(cb.defaultOpenCheck)
 }
 
 func (cb *CircuitBreaker) Close() {
@@ -47,12 +52,12 @@ func (cb *CircuitBreaker) Open() {
 }
 
 func (cb *CircuitBreaker) Run(f func() (interface{}, error)) (interface{}, error) {
-	if cb.State == OPEN_STATE && time.Since(cb.OpenedAt) < cb.Timeout {
-		return nil, ErrOpenCircuit
+	if cb.HalfOpenCheck() {
+		cb.HalfOpen()
 	}
 
 	if cb.State == OPEN_STATE {
-		cb.HalfOpen()
+		return nil, ErrOpenCircuit
 	}
 
 	resp, err := f()
@@ -65,8 +70,20 @@ func (cb *CircuitBreaker) Run(f func() (interface{}, error)) (interface{}, error
 	return resp, nil
 }
 
+func (cb *CircuitBreaker) WithCloseCheck(f func() bool) *CircuitBreaker {
+	cb.CloseCheck = f
+
+	return cb
+}
+
 func (cb *CircuitBreaker) WithFailureThreshold(t int) *CircuitBreaker {
 	cb.FailureThreshold = t
+
+	return cb
+}
+
+func (cb *CircuitBreaker) WithHalfOpenCheck(f func() bool) *CircuitBreaker {
+	cb.HalfOpenCheck = f
 
 	return cb
 }
@@ -77,15 +94,34 @@ func (cb *CircuitBreaker) WithTimeout(t time.Duration) *CircuitBreaker {
 	return cb
 }
 
+func (cb *CircuitBreaker) WithOpenCheck(f func() bool) *CircuitBreaker {
+	cb.OpenCheck = f
+
+	return cb
+}
+
 func (cb *CircuitBreaker) WithSuccessThreshold(t int) *CircuitBreaker {
 	cb.SuccessThreshold = t
 
 	return cb
 }
 
+func (cb *CircuitBreaker) defaultCloseCheck() bool {
+	return cb.State == HALF_OPEN_STATE && cb.Successes >= cb.SuccessThreshold
+}
+
+func (cb *CircuitBreaker) defaultHalfOpen() bool {
+	return cb.State == OPEN_STATE && time.Since(cb.OpenedAt) > cb.Timeout
+}
+
+func (cb *CircuitBreaker) defaultOpenCheck() bool {
+	return cb.Failures >= cb.FailureThreshold
+}
+
 func (cb *CircuitBreaker) markFailure() {
 	cb.Failures += 1
-	if cb.Failures < cb.FailureThreshold {
+
+	if !cb.OpenCheck() {
 		return
 	}
 
@@ -94,7 +130,7 @@ func (cb *CircuitBreaker) markFailure() {
 
 func (cb *CircuitBreaker) markSuccess() {
 	cb.Successes += 1
-	if cb.State == CLOSED_STATE || cb.Successes < cb.SuccessThreshold {
+	if !cb.CloseCheck() {
 		return
 	}
 
