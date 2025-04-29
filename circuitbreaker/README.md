@@ -26,10 +26,14 @@ You can configure some options:
 
 ```go
 func main() {
-cb := circuitbreaker.New().
-        WithFailureThreshold(100) // errors threshold before transitioning from CLOSED to OPEN
-        WithSuccessThreshold(100) // success threshold before transitioning from HALF_OPEN to CLOSED
-        WithTimeout(10 * time.Second) // how long it waits before transitioning from OPEN to HALF_OPEN
+cb := circuitbreaker.New()
+
+cb.WithFailureThreshold(100). // errors threshold before transitioning from CLOSED to OPEN
+  WithSuccessThreshold(100). // success threshold before transitioning from HALF_OPEN to CLOSED
+  WithTimeout(10 * time.Second). // how long it waits before transitioning from OPEN to HALF_OPEN
+  WithCloseCheck(func(cb circuitbreaker.CircuitBreaker) bool { return true }). // check it should transit from HALF_OPEN to CLOSED
+  WithOpenCheck(func(cb circuitbreaker.CircuitBreaker) bool { return true }). // check it should transit from CLOSED to OPEN
+  WithHalfOpenCheck(func(cb circuitbreaker.CircuitBreaker) bool { return true }) // check it should transit from OPEN to HALF_OPEN
 
 cb.Run(myfunc)
 }
@@ -48,4 +52,3 @@ cb.Open()
 cb.HalfOpen()
 cb.Close()
 ```
-
