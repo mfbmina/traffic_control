@@ -172,3 +172,44 @@ func Test_Run(t *testing.T) {
 		assert.Equal(t, circuitbreaker.CLOSED_STATE, cb.State)
 	})
 }
+
+func Test_SequentialCounters(t *testing.T) {
+	errorFunc := func() (interface{}, error) { return nil, errors.New("error") }
+	successFunc := func() (interface{}, error) { return true, nil }
+
+	t.Run("Sequential success count should increment on success", func(t *testing.T) {
+		cb := circuitbreaker.New()
+		cb.Run(successFunc)
+		cb.Run(successFunc)
+		if cb.GetSequentialSuccessCount() != 2 {
+			t.Errorf("Expected 2, got %d", cb.GetSequentialSuccessCount())
+		}
+	})
+
+	t.Run("Sequential failure count should increment on failure", func(t *testing.T) {
+		cb := circuitbreaker.New()
+		cb.Run(errorFunc)
+		cb.Run(errorFunc)
+		if cb.GetSequentialFailureCount() != 2 {
+			t.Errorf("Expected 2, got %d", cb.GetSequentialFailureCount())
+		}
+	})
+
+	t.Run("Sequential success count should reset on failure", func(t *testing.T) {
+		cb := circuitbreaker.New()
+		cb.Run(successFunc)
+		cb.Run(errorFunc)
+		if cb.GetSequentialSuccessCount() != 0 {
+			t.Errorf("Expected 0, got %d", cb.GetSequentialSuccessCount())
+		}
+	})
+
+	t.Run("Sequential failure count should reset on success", func(t *testing.T) {
+		cb := circuitbreaker.New()
+		cb.Run(errorFunc)
+		cb.Run(successFunc)
+		if cb.GetSequentialFailureCount() != 0 {
+			t.Errorf("Expected 0, got %d", cb.GetSequentialFailureCount())
+		}
+	})
+}
