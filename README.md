@@ -1,2 +1,5 @@
 # traffic_control
-Traffic control for Go apps
+A lib for ensuring traffic control for Go apps.
+
+Currently it supports:
+- Circuit Breaker
