@@ -29,6 +29,8 @@ type CircuitBreaker struct {
 	Successes        int
 	SuccessThreshold int
 	Timeout          time.Duration
+	SequentialSuccessCount int
+	SequentialFailureCount int
 }
 
 func New() *CircuitBreaker {
@@ -114,6 +116,8 @@ func (cb *CircuitBreaker) WithSuccessThreshold(t int) *CircuitBreaker {
 
 func (cb *CircuitBreaker) markFailure() {
 	cb.Failures += 1
+	cb.SequentialFailureCount += 1
+	cb.SequentialSuccessCount = 0
 
 	if !cb.OpenCheck(*cb) {
 		return
@@ -124,11 +128,22 @@ func (cb *CircuitBreaker) markFailure() {
 
 func (cb *CircuitBreaker) markSuccess() {
 	cb.Successes += 1
+	cb.SequentialSuccessCount += 1
+	cb.SequentialFailureCount = 0
+
 	if !cb.CloseCheck(*cb) {
 		return
 	}
 
 	cb.Close()
+}
+
+func (cb *CircuitBreaker) GetSequentialSuccessCount() int {
+	return cb.SequentialSuccessCount
+}
+
+func (cb *CircuitBreaker) GetSequentialFailureCount() int {
+	return cb.SequentialFailureCount
 }
 
 func defaultCloseCheck(cb CircuitBreaker) bool {
