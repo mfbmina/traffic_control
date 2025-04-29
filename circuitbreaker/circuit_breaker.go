@@ -33,7 +33,7 @@ func New() *CircuitBreaker {
 		WithSuccessThreshold(DEFAULT_THRESHOLD).
 		WithTimeout(DEFAULT_TIMEOUT).
 		WithCloseCheck(cb.defaultCloseCheck).
-		WithHalfOpenCheck(cb.defaultHalfOpen).
+		WithHalfOpenCheck(cb.defaultHalfOpenCheck).
 		WithOpenCheck(cb.defaultOpenCheck)
 }
 
@@ -111,7 +111,7 @@ func (cb *CircuitBreaker) defaultCloseCheck() bool {
 	return cb.State == HALF_OPEN_STATE && cb.Successes >= cb.SuccessThreshold
 }
 
-func (cb *CircuitBreaker) defaultHalfOpen() bool {
+func (cb *CircuitBreaker) defaultHalfOpenCheck() bool {
 	return cb.State == OPEN_STATE && time.Since(cb.OpenedAt) > cb.Timeout
 }
 
