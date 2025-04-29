@@ -17,9 +17,9 @@ func Test_New(t *testing.T) {
 		assert.Equal(t, circuitbreaker.DEFAULT_THRESHOLD, cb.FailureThreshold)
 		assert.Equal(t, circuitbreaker.DEFAULT_TIMEOUT, cb.Timeout)
 		assert.Equal(t, circuitbreaker.DEFAULT_THRESHOLD, cb.SuccessThreshold)
-		assert.False(t, cb.CloseCheck())
-		assert.False(t, cb.HalfOpenCheck())
-		assert.False(t, cb.OpenCheck())
+		assert.False(t, cb.CloseCheck(*cb))
+		assert.False(t, cb.HalfOpenCheck(*cb))
+		assert.False(t, cb.OpenCheck(*cb))
 	})
 
 	t.Run("Should set failure threshold if provided", func(t *testing.T) {
@@ -29,9 +29,9 @@ func Test_New(t *testing.T) {
 		assert.Equal(t, 10, cb.FailureThreshold)
 		assert.Equal(t, circuitbreaker.DEFAULT_TIMEOUT, cb.Timeout)
 		assert.Equal(t, circuitbreaker.DEFAULT_THRESHOLD, cb.SuccessThreshold)
-		assert.False(t, cb.CloseCheck())
-		assert.False(t, cb.HalfOpenCheck())
-		assert.False(t, cb.OpenCheck())
+		assert.False(t, cb.CloseCheck(*cb))
+		assert.False(t, cb.HalfOpenCheck(*cb))
+		assert.False(t, cb.OpenCheck(*cb))
 	})
 
 	t.Run("Should set timeout if provided", func(t *testing.T) {
@@ -41,9 +41,9 @@ func Test_New(t *testing.T) {
 		assert.Equal(t, circuitbreaker.DEFAULT_THRESHOLD, cb.FailureThreshold)
 		assert.Equal(t, 10*time.Second, cb.Timeout)
 		assert.Equal(t, circuitbreaker.DEFAULT_THRESHOLD, cb.SuccessThreshold)
-		assert.False(t, cb.CloseCheck())
-		assert.False(t, cb.HalfOpenCheck())
-		assert.False(t, cb.OpenCheck())
+		assert.False(t, cb.CloseCheck(*cb))
+		assert.False(t, cb.HalfOpenCheck(*cb))
+		assert.False(t, cb.OpenCheck(*cb))
 	})
 
 	t.Run("Should set success threshold if provided", func(t *testing.T) {
@@ -53,45 +53,45 @@ func Test_New(t *testing.T) {
 		assert.Equal(t, circuitbreaker.DEFAULT_THRESHOLD, cb.FailureThreshold)
 		assert.Equal(t, circuitbreaker.DEFAULT_TIMEOUT, cb.Timeout)
 		assert.Equal(t, 10, cb.SuccessThreshold)
-		assert.False(t, cb.CloseCheck())
-		assert.False(t, cb.HalfOpenCheck())
-		assert.False(t, cb.OpenCheck())
+		assert.False(t, cb.CloseCheck(*cb))
+		assert.False(t, cb.HalfOpenCheck(*cb))
+		assert.False(t, cb.OpenCheck(*cb))
 	})
 
 	t.Run("Should set close check if provided", func(t *testing.T) {
-		cb := circuitbreaker.New().WithCloseCheck(func() bool { return true })
+		cb := circuitbreaker.New().WithCloseCheck(func(cb circuitbreaker.CircuitBreaker) bool { return true })
 
 		assert.Equal(t, circuitbreaker.CLOSED_STATE, cb.State)
 		assert.Equal(t, circuitbreaker.DEFAULT_THRESHOLD, cb.FailureThreshold)
 		assert.Equal(t, circuitbreaker.DEFAULT_TIMEOUT, cb.Timeout)
 		assert.Equal(t, circuitbreaker.DEFAULT_THRESHOLD, cb.SuccessThreshold)
-		assert.True(t, cb.CloseCheck())
-		assert.False(t, cb.HalfOpenCheck())
-		assert.False(t, cb.OpenCheck())
+		assert.True(t, cb.CloseCheck(*cb))
+		assert.False(t, cb.HalfOpenCheck(*cb))
+		assert.False(t, cb.OpenCheck(*cb))
 	})
 
 	t.Run("Should set half open check if provided", func(t *testing.T) {
-		cb := circuitbreaker.New().WithHalfOpenCheck(func() bool { return true })
+		cb := circuitbreaker.New().WithHalfOpenCheck(func(cb circuitbreaker.CircuitBreaker) bool { return true })
 
 		assert.Equal(t, circuitbreaker.CLOSED_STATE, cb.State)
 		assert.Equal(t, circuitbreaker.DEFAULT_THRESHOLD, cb.FailureThreshold)
 		assert.Equal(t, circuitbreaker.DEFAULT_TIMEOUT, cb.Timeout)
 		assert.Equal(t, circuitbreaker.DEFAULT_THRESHOLD, cb.SuccessThreshold)
-		assert.False(t, cb.CloseCheck())
-		assert.True(t, cb.HalfOpenCheck())
-		assert.False(t, cb.OpenCheck())
+		assert.False(t, cb.CloseCheck(*cb))
+		assert.True(t, cb.HalfOpenCheck(*cb))
+		assert.False(t, cb.OpenCheck(*cb))
 	})
 
 	t.Run("Should set open check if provided", func(t *testing.T) {
-		cb := circuitbreaker.New().WithOpenCheck(func() bool { return true })
+		cb := circuitbreaker.New().WithOpenCheck(func(cb circuitbreaker.CircuitBreaker) bool { return true })
 
 		assert.Equal(t, circuitbreaker.CLOSED_STATE, cb.State)
 		assert.Equal(t, circuitbreaker.DEFAULT_THRESHOLD, cb.FailureThreshold)
 		assert.Equal(t, circuitbreaker.DEFAULT_TIMEOUT, cb.Timeout)
 		assert.Equal(t, circuitbreaker.DEFAULT_THRESHOLD, cb.SuccessThreshold)
-		assert.False(t, cb.CloseCheck())
-		assert.False(t, cb.HalfOpenCheck())
-		assert.True(t, cb.OpenCheck())
+		assert.False(t, cb.CloseCheck(*cb))
+		assert.False(t, cb.HalfOpenCheck(*cb))
+		assert.True(t, cb.OpenCheck(*cb))
 	})
 }
 
