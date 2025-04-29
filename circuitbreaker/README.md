@@ -49,4 +49,3 @@ cb.HalfOpen()
 cb.Close()
 ```
 
-## 

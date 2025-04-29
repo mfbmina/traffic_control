@@ -44,6 +44,7 @@ func (cb *CircuitBreaker) Close() {
 func (cb *CircuitBreaker) HalfOpen() {
 	cb.State = HALF_OPEN_STATE
 	cb.Failures = 0
+	cb.Successes = 0
 }
 
 func (cb *CircuitBreaker) Open() {
